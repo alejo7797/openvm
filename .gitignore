@@ -21,6 +21,9 @@ rustc-*
 .vscode/
 .zed/
 
+# Dev shell
+.direnv/
+
 # Bench metrics
 .bench_metrics/
 __pycache__/
