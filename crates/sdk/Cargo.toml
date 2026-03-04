@@ -50,6 +50,7 @@ serde_with = { workspace = true, features = ["hex"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 metrics = { workspace = true, optional = true }
+svm-rs-builds = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt", "sync"], optional = true }
 toml = { workspace = true }
 
@@ -81,6 +82,7 @@ evm-verify = [
 evm-verify-fmt = [
     "evm-verify",
     "dep:forge-fmt",
+    "dep:svm-rs-builds",
 ]
 metrics = ["dep:metrics", "openvm-continuations/metrics", "openvm-sdk-config/metrics"]
 aot = [
