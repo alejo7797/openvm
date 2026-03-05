@@ -30,6 +30,7 @@ pub fn get_rustup_toolchain_name() -> String {
 }
 const BUILD_LOCKED_ENV: &str = "OPENVM_BUILD_LOCKED";
 const SKIP_BUILD_ENV: &str = "OPENVM_SKIP_BUILD";
+const SKIP_RUSTUP: &str = "OPENVM_SKIP_RUSTUP";
 const GUEST_LOGFILE_ENV: &str = "OPENVM_GUEST_LOGFILE";
 const ALLOWED_CARGO_ENVS: &[&str] = &["CARGO_HOME"];
 
@@ -248,18 +249,28 @@ fn sanitized_cmd(tool: &str) -> Command {
 pub fn cargo_command(subcmd: &str, rust_flags: &[&str]) -> Command {
     let toolchain = format!("+{}", get_rustup_toolchain_name());
 
-    let rustc = sanitized_cmd("rustup")
-        .args([&toolchain, "which", "rustc"])
-        .output()
-        .expect("rustup failed to find nightly toolchain")
-        .stdout;
+    let rustc = if std::env::var(SKIP_RUSTUP).is_ok() {
+        String::from("rustc")
+    } else {
+        let rustc = sanitized_cmd("rustup")
+            .args([&toolchain, "which", "rustc"])
+            .output()
+            .expect("rustup failed to find nightly toolchain")
+            .stdout;
 
-    let rustc = String::from_utf8(rustc).unwrap();
-    let rustc = rustc.trim();
-    println!("Using rustc: {rustc}");
+        let rustc = String::from_utf8(rustc).unwrap().trim().to_string();
+        println!("Using rustc: {rustc}");
+        rustc
+    };
 
     let mut cmd = sanitized_cmd("cargo");
-    let mut args = vec![&toolchain, subcmd, "--target", RUSTC_TARGET];
+    let mut args = vec![];
+
+    if !std::env::var(SKIP_RUSTUP).is_ok() {
+        args.push(&toolchain[..]);
+    }
+
+    args.extend_from_slice(&[subcmd, "--target", RUSTC_TARGET]);
 
     if std::env::var(BUILD_LOCKED_ENV).is_ok() {
         args.push("--locked");
@@ -281,7 +292,7 @@ pub fn cargo_command(subcmd: &str, rust_flags: &[&str]) -> Command {
 
     let encoded_rust_flags = encode_rust_flags(rust_flags);
 
-    cmd.env("RUSTC", rustc)
+    cmd.env("RUSTC", &rustc)
         .env("CARGO_ENCODED_RUSTFLAGS", encoded_rust_flags)
         .args(args);
     cmd
@@ -508,6 +519,11 @@ pub fn detect_toolchain(name: &str) {
 
 /// Ensures the required toolchain and components are installed.
 fn ensure_toolchain_installed(toolchain: &str, components: &[&str]) -> Result<(), i32> {
+    // Optionally skip
+    if std::env::var(SKIP_RUSTUP).is_ok() {
+        return Ok(());
+    }
+
     // Check if toolchain is installed
     let output = Command::new("rustup")
         .args(["toolchain", "list"])
