@@ -13,6 +13,11 @@
     openvm.inputs.nixpkgs.follows = "nixpkgs";
   };
 
+  nixConfig = {
+    extra-substituters = [ "https://openvm.cachix.org" ];
+    trusted-public-keys = [ "openvm.cachix.org-1:smgY6he3suDFB1pzLjFeuAk/4N1EKifE13g5UtqdkBY=" ];
+  };
+
   outputs =
     inputs:
     inputs.flake-parts.lib.mkFlake
