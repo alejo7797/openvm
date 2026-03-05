@@ -32,14 +32,19 @@
               stdenv
               ;
 
-            rustToolchain = inputs'.fenix.packages.fromToolchainFile {
+            buildToolchain = inputs'.fenix.packages.fromToolchainFile {
               dir = ./.;
               sha256 = "sha256-SJwZ8g0zF2WrKDVmHrVG3pD2RGoQeo24MEXnNx5FyuI=";
             };
 
-            rustPlatform = makeRustPlatform {
-              cargo = rustToolchain;
-              rustc = rustToolchain;
+            buildRustPlatform = makeRustPlatform {
+              cargo = buildToolchain;
+              rustc = buildToolchain;
+            };
+
+            openvmToolchain = inputs'.fenix.packages.fromToolchainName {
+              name = "nightly-2025-08-02";
+              sha256 = "sha256-QnkfTssgWvuyHRH3IkYAk3IHpKi4klsOvVIN+hKsqkY=";
             };
 
             solc_0_8_19 = stdenv.mkDerivation {
@@ -65,16 +70,32 @@
               pkgs = inputs'.nixpkgs.legacyPackages;
             };
 
-            devShells.default = pkgs.mkShell {
-              nativeBuildInputs = [
-                solc_0_8_19
-                rustToolchain
-              ];
+            devShells = {
+
+              dev = pkgs.mkShell {
+                nativeBuildInputs = [
+                  buildToolchain
+                ];
+              };
+
+              openvm = pkgs.mkShell {
+                nativeBuildInputs = [
+                  openvmToolchain.toolchain
+                  solc_0_8_19
+                  self'.packages.openvm
+                ];
+                env = {
+                  OPENVM_SKIP_RUSTUP = "1";
+                };
+              };
+
+              default = self'.devShells.dev;
+
             };
 
             packages = {
 
-              openvm = rustPlatform.buildRustPackage {
+              openvm = buildRustPlatform.buildRustPackage {
                 pname = "openvm";
                 version = "2.0.0-beta.1";
                 src = ./.;
